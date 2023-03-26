@@ -1,0 +1,176 @@
+---
+title: "Programming assigment 4"
+subtitle: ""
+author: "Ivan Andreu Rascon"
+institute: "Rutgers"
+date: "2023/3/21 (updated: `r Sys.Date()`)"
+output: 
+  xaringan::moon_reader:
+    css: [default,hygge,rutgers,rutgers-fonts]
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(ds4ling)
+library(tidyverse)
+library(here)
+library(dplyr)
+library(gtsummary)
+library(gt)
+library(htmltools)
+library(gridExtra)
+library(broom)
+
+```
+
+
+```{r 4Load the dataset from inside your, echo=FALSE, warning=FALSE}
+
+fricatives <- read.csv(here("data_raw", "fricatives.csv"))
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+tidyfricatives <- fricatives %>%
+  pivot_longer(c("s_cog", "s_skewness", "sh_cog", "sh_skewness"), names_to = "class", values_to = "hz") %>%
+  separate("class", into = c("phoneme", "metric"), sep = "_") %>%
+  pivot_wider(names_from = "metric", values_from = "hz")
+
+tidyfricatives %>%
+write.csv(here("data_tidy","tidyfricatives.csv"))
+
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+
+tidyfricatives <- read.csv(here("data_tidy", "tidyfricatives.csv"))
+summary(tidyfricatives)
+
+```
+
+---
+# boxplot of center of gravity as a function of phoneme. 
+
+
+```{r echo=FALSE, warning=FALSE}
+tidyfricatives %>% 
+  ggplot() +
+    geom_boxplot(aes(x = phoneme, y = cog)) +
+    labs(title = "center of gravity of phonemes /s/ and /ʃ/")
+
+```
+
+---
+# skewness as a function of phoneme with stat_summary
+
+
+```{r echo=FALSE, warning=FALSE}
+tidyfricatives %>%
+  ggplot(aes(x = phoneme, y = skewness)) +
+  geom_jitter(width = 0.07, alpha = 0.5) +
+  stat_summary(fun = "mean", color = "blue") +
+  labs(title = "Skewness", x = "Phoneme", y = "Skewness")
+```
+
+
+---
+8. Fit a model that examines center of gravity as a function of skewness for the [s] segments (hint: you will have to transform the data). Make a table of the model summary.
+
+```{r echo=FALSE, warning=FALSE}
+
+s_segments <- tidyfricatives %>%
+  filter(phoneme == "s")
+model <- lm(cog ~ skewness, data = s_segments)
+
+summary(model)
+
+fancy_table <- model %>%
+  tbl_regression(exponentiate = FALSE) %>%
+  as_gt()
+print(fancy_table)
+
+```
+---
+
+```{r echo=FALSE, warning=FALSE}
+htmltools::tagList(fancy_table)
+
+```
+
+---
+
+9. Make a scatter plot that illustrates the relationship in (8)
+
+```{r echo=FALSE, warning=FALSE}
+
+ggplot(data = s_segments, aes(x = skewness, y = cog)) +
+  geom_point(color = "steelblue", size = 3, alpha = 0.7) +
+  geom_smooth(method = "loess", se = TRUE, color = "darkred", linetype = "solid", size = 1.5) +
+  labs(title = "Center of Gravity vs. Skewness for [s] Segments",
+       x = "Skewness",
+       y = "Center of Gravity") +
+  theme_minimal() +
+  theme(text = element_text(size = 14),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        axis.title = element_text(face = "bold", size = 16),
+        panel.grid.major = element_line(color = "grey90"),
+        panel.grid.minor = element_line(color = "grey95"))
+
+```
+
+---
+# QQ Plot - Model diagnostics
+
+```{r echo=FALSE}
+
+model_diag <- augment(model)
+
+qq_plot <- ggplot(model_diag, aes(sample = .std.resid)) +
+  geom_qq() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(title = "Normal Q-Q Plot",
+       x = "Theoretical Quantiles",
+       y = "Standardized Residuals") +
+  theme_minimal()
+
+qq_plot
+
+```
+
+---
+**Results** 
+
+This paper examines the relationship between center of gravity and skewness for the [s] phoneme using a linear regression model. Rresults indicated that skewness was a significant predictor of center of gravity (β = 3029.1, t(18) = 11.69, p < .001), accounting for 87.71% of the variance (R-squared) in center of gravity. 
+The intercept (β = 8027.2, t(18) = 37.80, p < .001) represents the estimated center of gravity when skewness is equal to zero. The t-value associated with the intercept indicates that the estimated intercept is different from zero at 0.001 significance.
+The residual standard error was 320.1, and indicates the average distance of the observed data points from the fitted regression line. The R-squared value of 0.8836 indicates that 88.36% of the variance in center of gravity can be explained by the model, while the adjusted R-squared value of 0.8771 adjusts for the number of predictors and degrees of freedom.
+
+Finally, the Q-Q plot showed that the residuals were normally distributed. 
+
+---
+
+```{r echo=FALSE}
+
+assumptions <- read.csv(here("data_raw", "assumptions.csv"))
+
+```
+
+**This is awesome**
+
+And would not fit a linear model because:
+
+1. The relationship between x and y is not linear.
+2. Values are not normally distributed.
+3. Heteroscedasticity: The variance of y is not constant across the range of x values.
+
+```{r echo=FALSE}
+
+assumptions %>% 
+  ggplot() +
+    geom_point(aes(x = x, y = y)) +
+    labs(title = "Assumptions")
+
+
+
+```
+
