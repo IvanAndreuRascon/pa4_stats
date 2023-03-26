@@ -120,6 +120,11 @@ ggplot(data = s_segments, aes(x = skewness, y = cog)) +
 ```
 
 ---
+```{r model-diagnostics, echo=FALSE}
+diagnosis(model)
+```
+
+---
 # QQ Plot - Model diagnostics
 
 ```{r echo=FALSE}
